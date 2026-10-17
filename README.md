@@ -4,6 +4,10 @@ Base de uma plataforma pessoal de produtividade, com Next.js 15 (App Router), Ty
 
 Este repositório é a demonstração do produto. Cada atualização concluída passa por lint, testes e build antes de ser enviada ao GitHub.
 
+## Demonstração pública
+
+A versão estática em GitHub Pages é gerada com `npm run build:pages` e publicada a partir da pasta `docs`. Ela preserva a navegação, os tutoriais, o tema e os cadastros salvos no navegador. Autenticação e sincronização com o Supabase exigem um servidor Next.js e ficam desativadas nessa demonstração pública.
+
 > Estado atual: cadastro, confirmação de e-mail, login, proteção de rotas e logout estão prontos. Sem credenciais do Supabase, a aplicação mantém o modo local para permitir o desenvolvimento da interface; ao configurar `.env.local`, a autenticação é ativada automaticamente.
 
 ## Executar

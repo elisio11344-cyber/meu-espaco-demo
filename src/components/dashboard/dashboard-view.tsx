@@ -15,6 +15,25 @@ import { useAppPreferences } from "@/lib/app-preferences";
 const bars = [0, 0, 0, 0, 0, 0, 0];
 
 type ExchangeResponse = { date: string; rates: ExchangeRates; source: string };
+type FrankfurterRate = { date: string; quote: string; rate: number };
+
+async function loadExchangeRates(currencyQuery: string): Promise<ExchangeResponse> {
+  if (process.env.NEXT_PUBLIC_GITHUB_PAGES !== "true") {
+    const response = await fetch(`/api/exchange-rates?currencies=${encodeURIComponent(currencyQuery)}`);
+    if (!response.ok) throw new Error("exchange_unavailable");
+    return response.json() as Promise<ExchangeResponse>;
+  }
+
+  const currencies = currencyQuery.split(",").filter(Boolean);
+  const quotes = currencies.filter((currency) => currency !== "EUR");
+  const response = await fetch(`https://api.frankfurter.dev/v2/rates?base=EUR&quotes=${encodeURIComponent(quotes.join(","))}`);
+  if (!response.ok) throw new Error("exchange_unavailable");
+  const data = await response.json() as FrankfurterRate[];
+  const rates = Object.fromEntries(data.map((item) => [item.quote.toUpperCase(), item.rate])) as ExchangeRates;
+  rates.EUR = 1;
+  if (!currencies.every((currency) => Number.isFinite(rates[currency]) && rates[currency] > 0)) throw new Error("invalid_exchange_rates");
+  return { date: data[0]?.date ?? new Date().toISOString().slice(0, 10), rates, source: "Frankfurter" };
+}
 
 export function DashboardView() {
   const { userKey } = useAppPreferences();
@@ -46,11 +65,7 @@ export function DashboardView() {
     if (savedCurrency && currencies.includes(savedCurrency)) setNetWorthCurrency(savedCurrency);
     else if (currencies.length > 0) setNetWorthCurrency(currencies[0]);
     if (!currencyQuery) return;
-    fetch(`/api/exchange-rates?currencies=${encodeURIComponent(currencyQuery)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("exchange_unavailable");
-        return response.json() as Promise<ExchangeResponse>;
-      })
+    loadExchangeRates(currencyQuery)
       .then((data) => setExchange(data))
       .catch(() => setExchangeError(true));
   }, [currencies, currencyQuery, userKey]);

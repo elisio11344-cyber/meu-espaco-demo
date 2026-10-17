@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { logout } from "@/lib/auth/actions";
 import { AppPreferencesProvider } from "@/lib/app-preferences";
 import { FirstVisitGuide, type GuideContent } from "./first-visit-guide";
 
@@ -121,7 +120,7 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
   return <svg aria-hidden="true" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
-export function AppShell({ children, authEnabled = false, userEmail, userName, userId }: { children: React.ReactNode; authEnabled?: boolean; userEmail?: string; userName?: string; userId?: string }) {
+export function AppShell({ children, authEnabled = false, userEmail, userName, userId, logoutAction }: { children: React.ReactNode; authEnabled?: boolean; userEmail?: string; userName?: string; userId?: string; logoutAction?: () => Promise<unknown> }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dark, setDark] = useState(false);
@@ -174,7 +173,7 @@ export function AppShell({ children, authEnabled = false, userEmail, userName, u
           <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ffd600] text-sm font-black text-black">{getInitials(userName)}</div>
           <div className="min-w-0"><p className="truncate text-sm font-semibold">{userName || "Meu espaço"}</p><p className="truncate text-xs text-white/40">{authEnabled ? userEmail ?? "Conta conectada" : "Modo local"}</p></div>
         </div>
-        {authEnabled ? <button type="button" onClick={() => void logout()} className="mt-2 w-full rounded-xl border border-white/10 px-3 py-2 text-left text-xs font-bold text-white/55 transition hover:bg-white/10 hover:text-white">Sair da conta</button> : <p className="mt-3 px-2 text-[11px] leading-relaxed text-white/30">Adicione as credenciais do Supabase para ativar login e sincronização.</p>}
+        {authEnabled && logoutAction ? <button type="button" onClick={() => void logoutAction()} className="mt-2 w-full rounded-xl border border-white/10 px-3 py-2 text-left text-xs font-bold text-white/55 transition hover:bg-white/10 hover:text-white">Sair da conta</button> : <p className="mt-3 px-2 text-[11px] leading-relaxed text-white/30">Demonstração local. Os dados ficam somente neste navegador.</p>}
       </div>
     </aside>
     <main id="content" className="min-w-0 flex-1 px-5 py-7 sm:px-8 md:px-10 md:py-9 xl:px-14">{children}</main>

@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app/app-shell";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { logout } from "@/lib/auth/actions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const authEnabled = isSupabaseConfigured();
@@ -17,5 +18,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       userName = profile?.display_name || data.user.user_metadata.display_name;
     }
   }
-  return <AppShell authEnabled={authEnabled} userEmail={userEmail} userName={userName} userId={userId}>{children}</AppShell>;
+  return <AppShell authEnabled={authEnabled} userEmail={userEmail} userName={userName} userId={userId} logoutAction={logout}>{children}</AppShell>;
 }
