@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppPreferencesProvider } from "@/lib/app-preferences";
+import { useI18n, type Language } from "@/lib/i18n";
 import { FirstVisitGuide, type GuideContent } from "./first-visit-guide";
 
 type IconName = "dashboard" | "calendar" | "habits" | "notes" | "goals" | "finance" | "rewards" | "account";
@@ -142,7 +143,7 @@ export function AppShell({ children, authEnabled = false, userEmail, userName, u
     window.localStorage.setItem(`foco:${userKey}:theme`, next ? "dark" : "light");
   }
 
-  return <AppPreferencesProvider userKey={userKey}><div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)] md:flex">
+  return <AppPreferencesProvider userKey={userKey}><div className="app-frame min-h-dvh bg-[var(--background)] text-[var(--foreground)] md:flex">
     <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-[#ffd600] focus:px-4 focus:py-2 focus:font-semibold">Pular para o conteúdo</a>
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-black/10 bg-[#0c0c0c] px-5 text-white md:hidden">
       <Brand />
@@ -151,7 +152,7 @@ export function AppShell({ children, authEnabled = false, userEmail, userName, u
       </button></div>
     </header>
     {menuOpen && <button type="button" aria-label="Fechar menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/55 md:hidden" />}
-    <aside id="mobile-navigation" className={`fixed inset-y-0 left-0 z-50 flex w-[82vw] max-w-72 flex-col overflow-y-auto bg-[#0c0c0c] p-5 text-white transition-transform duration-300 md:sticky md:top-0 md:h-dvh md:w-64 md:translate-x-0 md:p-6 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+    <aside id="mobile-navigation" className={`command-rail fixed inset-y-0 left-0 z-50 flex w-[82vw] max-w-72 flex-col overflow-y-auto bg-[#0c0c0c] p-5 text-white transition-transform duration-300 md:sticky md:top-0 md:h-dvh md:w-64 md:translate-x-0 md:p-6 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="hidden md:block"><Brand /></div>
       <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.04] p-3 md:mt-12">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffd600]">Hoje</p>
@@ -168,6 +169,7 @@ export function AppShell({ children, authEnabled = false, userEmail, userName, u
         })}
       </nav>
       <div className="mt-auto border-t border-white/10 pt-5">
+        <LanguageSwitcher />
         <div className="mb-3 grid grid-cols-2 gap-2"><button type="button" onClick={toggleTheme} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:bg-white/10">{dark ? "☀ Claro" : "◐ Escuro"}</button>{guide && <button type="button" onClick={() => setGuideSignal((value) => value + 1)} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:bg-white/10">? Tutorial</button>}</div>
         <div className="flex items-center gap-3 rounded-xl p-2">
           <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ffd600] text-sm font-black text-black">{getInitials(userName)}</div>
@@ -176,9 +178,17 @@ export function AppShell({ children, authEnabled = false, userEmail, userName, u
         {authEnabled && logoutAction ? <button type="button" onClick={() => void logoutAction()} className="mt-2 w-full rounded-xl border border-white/10 px-3 py-2 text-left text-xs font-bold text-white/55 transition hover:bg-white/10 hover:text-white">Sair da conta</button> : <p className="mt-3 px-2 text-[11px] leading-relaxed text-white/30">Demonstração local. Os dados ficam somente neste navegador.</p>}
       </div>
     </aside>
-    <main id="content" className="min-w-0 flex-1 px-5 py-7 sm:px-8 md:px-10 md:py-9 xl:px-14">{children}</main>
+    <main id="content" className="app-content min-w-0 flex-1 px-5 py-7 sm:px-8 md:px-10 md:py-9 xl:px-14">{children}</main>
     {guide && <FirstVisitGuide storageKey={`foco:${userKey}:tutorial:${pathname}`} content={guide} reopenSignal={guideSignal} />}
   </div></AppPreferencesProvider>;
+}
+
+export function LanguageSwitcher() {
+  const { language, setLanguage } = useI18n();
+  const options: Array<{ code: Language; label: string }> = [{ code: "pt", label: "PT" }, { code: "en", label: "EN" }, { code: "es", label: "ES" }];
+  return <div className="language-switcher mb-3 grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-white/[0.04] p-1" role="group" aria-label="Idioma da interface">
+    {options.map((option) => <button key={option.code} type="button" onClick={() => setLanguage(option.code)} aria-pressed={language === option.code} className={`rounded-lg px-2 py-2 text-[10px] font-black tracking-[0.16em] transition ${language === option.code ? "bg-[#ffd600] text-black shadow-[0_4px_18px_rgba(255,214,0,.2)]" : "text-white/40 hover:bg-white/10 hover:text-white"}`}>{option.label}</button>)}
+  </div>;
 }
 
 function getInitials(name?: string) {
@@ -187,8 +197,8 @@ function getInitials(name?: string) {
 }
 
 function Brand() {
-  return <Link href="/dashboard" className="flex items-center gap-3" aria-label="Foco — início">
-    <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-[#ffd600] font-black text-black">F</span>
+  return <Link href="/dashboard" className="brand-lockup flex items-center gap-3" aria-label="Foco — início">
+    <span className="brand-mark grid h-9 w-9 place-items-center rounded-[10px] bg-[#ffd600] font-black text-black">F</span>
     <span><span className="block text-sm font-black uppercase tracking-[0.16em]">Foco</span><span className="block text-[10px] uppercase tracking-[0.12em] text-white/40">Meu espaço</span></span>
   </Link>;
 }
