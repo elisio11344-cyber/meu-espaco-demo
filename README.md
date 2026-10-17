@@ -6,6 +6,8 @@ Este repositório é a demonstração do produto. Cada atualização concluída 
 
 ## Demonstração pública
 
+Acesse: **[elisio11344-cyber.github.io/meu-espaco-demo](https://elisio11344-cyber.github.io/meu-espaco-demo/)**
+
 A versão estática em GitHub Pages é gerada com `npm run build:pages` e publicada a partir da pasta `docs`. Ela preserva a navegação, os tutoriais, o tema e os cadastros salvos no navegador. Autenticação e sincronização com o Supabase exigem um servidor Next.js e ficam desativadas nessa demonstração pública.
 
 > Estado atual: cadastro, confirmação de e-mail, login, proteção de rotas e logout estão prontos. Sem credenciais do Supabase, a aplicação mantém o modo local para permitir o desenvolvimento da interface; ao configurar `.env.local`, a autenticação é ativada automaticamente.
