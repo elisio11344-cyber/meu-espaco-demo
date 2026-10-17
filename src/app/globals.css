@@ -1,0 +1,28 @@
+@import "tailwindcss";
+:root { color-scheme: light; --yellow: #ffd600; --ink: #0c0c0c; --paper: #f6f4ed; --background: #f6f4ed; --surface: #ffffff; --surface-soft: #faf9f4; --foreground: #0c0c0c; --muted: rgba(12, 12, 12, .52); --border: rgba(12, 12, 12, .12); }
+:root.dark { color-scheme: dark; --background: #11110f; --surface: #1b1b18; --surface-soft: #23231f; --foreground: #f7f4e9; --muted: rgba(247, 244, 233, .55); --border: rgba(255, 255, 255, .12); }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; transition: background-color .2s ease, color .2s ease; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+::selection { background: var(--yellow); color: var(--ink); }
+.page-grid { background-image: radial-gradient(rgba(12, 12, 12, 0.09) 0.8px, transparent 0.8px); background-size: 16px 16px; }
+
+/* Dark theme bridge for the existing Tailwind utility palette. */
+.dark .bg-white { background-color: var(--surface); }
+.dark .bg-\[\#f6f4ed\], .dark .bg-\[\#faf9f4\], .dark .bg-\[\#fffbea\], .dark .bg-\[\#fff5b3\] { background-color: var(--surface-soft); }
+.dark [class*="text-black/"] { color: var(--muted); }
+.dark [class*="border-black/"] { border-color: var(--border); }
+.dark [class*="divide-black/"] > :not(:last-child) { border-color: var(--border); }
+.dark .text-black { color: var(--foreground); }
+.dark input, .dark textarea, .dark select { color: var(--foreground); }
+.dark input::placeholder, .dark textarea::placeholder { color: rgba(247, 244, 233, .3); }
+.dark .bg-\[\#ffd600\], .dark .bg-\[\#ffd600\] .text-black, .dark .bg-\[\#ffd600\] [class*="text-black/"] { color: #0c0c0c; }
+.dark .page-grid { background-image: radial-gradient(rgba(12, 12, 12, .16) .8px, transparent .8px); }
+
+@keyframes guide-in {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
