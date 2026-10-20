@@ -8,7 +8,7 @@ Este repositório é a demonstração do produto. Cada atualização concluída 
 
 Acesse: **[elisio11344-cyber.github.io/meu-espaco-demo](https://elisio11344-cyber.github.io/meu-espaco-demo/)**
 
-A versão estática em GitHub Pages é gerada com `npm run build:pages` e publicada a partir da pasta `docs`. Ela preserva a navegação, os tutoriais, o tema e os cadastros salvos no navegador. Autenticação e sincronização com o Supabase exigem um servidor Next.js e ficam desativadas nessa demonstração pública.
+A versão estática em GitHub Pages é gerada com `npm run build:pages` e publicada a partir da pasta `docs`. Ela preserva a navegação, os tutoriais, o tema e os cadastros salvos no navegador. A captura inteligente usa um interpretador local nessa demonstração; autenticação, Gemini e sincronização com o Supabase exigem a aplicação completa.
 
 > Estado atual: cadastro, confirmação de e-mail, login, proteção de rotas e logout estão prontos. Sem credenciais do Supabase, a aplicação mantém o modo local para permitir o desenvolvimento da interface; ao configurar `.env.local`, a autenticação é ativada automaticamente.
 
@@ -39,10 +39,25 @@ O cadastro informa que é necessário consultar a caixa de entrada; o link verif
 
 As migrations em `supabase/migrations` preparam o banco para hábitos, metas, notas interligadas, gamificação, recompensas, agenda e finanças multi-moedas. Todas as tabelas de dados privados têm `user_id` e políticas RLS restritas a `auth.uid()`. Depois de criar e vincular o projeto remoto, aplique-as em ordem com `supabase db push`. A interface ainda usa `localStorage`; a próxima etapa de persistência é trocar os adaptadores locais pelas consultas ao Supabase, módulo por módulo.
 
+## Configurar a captura inteligente com Gemini
+
+O dashboard aceita comandos em linguagem natural para criar movimentações, notas e compromissos. Na aplicação autenticada, o navegador envia o comando para a Edge Function `quick-capture`; somente essa função acessa o Gemini. A chave nunca é enviada ao cliente nem versionada.
+
+```sh
+supabase db push
+supabase secrets set GEMINI_API_KEY=sua-chave
+supabase secrets set GEMINI_MODEL=gemini-3.5-flash-lite
+supabase secrets set ALLOWED_ORIGINS=http://localhost:3000,https://seu-dominio.com
+supabase functions deploy quick-capture
+```
+
+A tabela `assistant_requests` registra somente usuário, provedor, modelo, tipo da ação, tamanho da entrada e status. O texto digitado não é armazenado nessa telemetria. Há um limite de 20 comandos por minuto por usuário. A versão do GitHub Pages mantém um interpretador local para demonstrar o fluxo sem chave privada ou chamadas pagas.
+
 ## Rotas e estado atual
 
 - A aplicação abre diretamente em `/dashboard` e permite navegar entre `/agenda`, `/habitos`, `/notas`, `/metas`, `/recompensas` e `/financas`.
 - O dashboard reúne hábitos, metas, finanças, nota recente e um Brain visual com as conexões entre anotações.
+- A captura inteligente na visão geral interpreta despesas, receitas, notas e compromissos, grava no módulo correspondente e permite desfazer a última criação.
 - Hábitos, notas, metas, recompensas, contas bancárias e movimentações financeiras podem ser criados, editados e excluídos. Os dados ficam salvos no `localStorage` do navegador enquanto o modo local estiver ativo.
 - Notas aceitam etiquetas e conexões bidirecionais. O módulo de notas alterna entre cartões e um mapa de conhecimento no estilo Obsidian.
 - Concluir hábitos e metas credita pontos uma única vez. O painel de recompensas permite definir o custo, acompanhar o extrato e comprar itens com débito automático do saldo.

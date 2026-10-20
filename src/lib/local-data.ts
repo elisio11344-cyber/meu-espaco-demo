@@ -173,8 +173,32 @@ export function useLocalCollection<T>(key: string, seed: T[]) {
   }, [key, storageKey, userKey]);
 
   useEffect(() => {
-    if (loaded) window.localStorage.setItem(storageKey, JSON.stringify(items));
+    if (!loaded) return;
+    const serialized = JSON.stringify(items);
+    if (window.localStorage.getItem(storageKey) === serialized) return;
+    window.localStorage.setItem(storageKey, serialized);
+    window.dispatchEvent(new CustomEvent("foco:data-changed", { detail: { storageKey, serialized } }));
   }, [items, loaded, storageKey]);
+
+  useEffect(() => {
+    function syncCollection(event: Event) {
+      const detail = (event as CustomEvent<{ storageKey?: string; serialized?: string }>).detail;
+      if (detail?.storageKey !== storageKey || !detail.serialized) return;
+      const serialized = detail.serialized;
+      setItems((current) => JSON.stringify(current) === serialized ? current : JSON.parse(serialized) as T[]);
+    }
+    function syncBrowserTabs(event: StorageEvent) {
+      const serialized = event.newValue;
+      if (event.key !== storageKey || !serialized) return;
+      setItems((current) => JSON.stringify(current) === serialized ? current : JSON.parse(serialized) as T[]);
+    }
+    window.addEventListener("foco:data-changed", syncCollection);
+    window.addEventListener("storage", syncBrowserTabs);
+    return () => {
+      window.removeEventListener("foco:data-changed", syncCollection);
+      window.removeEventListener("storage", syncBrowserTabs);
+    };
+  }, [storageKey]);
 
   const updateItems = useCallback((next: T[] | ((current: T[]) => T[])) => setItems(next), []);
   return [items, updateItems, loaded] as const;

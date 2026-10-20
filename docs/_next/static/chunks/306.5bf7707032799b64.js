@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[306],{6306:(e,r,n)=>{n.d(r,{createClient:()=>t});var a=n(497);function t(){let{url:e,key:r}=function(){throw Error("Configure as vari\xe1veis do Supabase em .env.local.")}();return(0,a.k)(e,r)}}}]);

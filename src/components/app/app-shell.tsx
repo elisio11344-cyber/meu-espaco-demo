@@ -25,6 +25,7 @@ const guides: Record<string, GuideContent> = {
     title: "Sua visão geral",
     description: "Conheça os atalhos e controles do painel principal.",
     steps: [
+      { button: "Captura inteligente", title: "Adicione escrevendo", description: "Descreva uma despesa, nota ou compromisso e o assistente organiza tudo no módulo correto." },
       { button: "+ Novo hábito", title: "Crie uma rotina", description: "Abre a página de Hábitos para você cadastrar a primeira atividade recorrente." },
       { button: "AUD · BRL · USD", title: "Escolha como ver o patrimônio", description: "Troca a moeda usada para exibir o valor total convertido das suas contas." },
       { button: "Cartões de hábitos", title: "Conclua sem sair do painel", description: "Toque no círculo de um hábito para marcar a atividade de hoje como concluída." },
