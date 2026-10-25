@@ -84,7 +84,8 @@ function systemPrompt(context: z.infer<typeof requestSchema>) {
 
 Rules:
 - The user writes primarily in Brazilian Portuguese, but may write in English or Spanish.
-- Today is ${context.today} in timezone ${context.timezone}. Resolve hoje/today/hoy, ontem/yesterday/ayer and amanhã/tomorrow/mañana from this date.
+- Treat spelling mistakes, missing accents, speech-to-text mistakes, abbreviations and informal wording as normal. Infer the intended word from the whole sentence: examples include "agenar/agnda" = agendar/agenda, "amanhaa/amanha" = amanhã, "reuniao" = reunião, "hj" = hoje, "prox" = próxima and "tersa" = terça. Do not copy these mistakes into dates or structured fields.
+- Today is ${context.today} in timezone ${context.timezone}. Resolve hoje/today/hoy, ontem/yesterday/ayer, amanhã/tomorrow/mañana, depois de amanhã, "em N dias", dates such as 30/10 or 30/10/2026, and the next mentioned weekday from this date.
 - Money is always an integer number of cents. 200 reais means amountCents 20000.
 - Supported currencies: ${context.currencies.join(", ")}.
 - "real", "reais" and R$ mean BRL; "dólar australiano" means AUD; "dólar americano" means USD.
@@ -92,10 +93,20 @@ Rules:
 - For a transaction, choose an accountId only from the available accounts with the same currency. Use null when none exists.
 - Common financial categories in Portuguese: Comida, Jogos, Aluguel, Saúde, Contas, Transporte, Lazer, Educação, Renda, Outros.
 - Dates for transactions use YYYY-MM-DD. Event datetimes must be ISO 8601 with the user's timezone offset.
-- If an event has no time, a transaction has no amount, or the intent is ambiguous, return kind clarification with one short question.
+- For events, understand 18h, 18h30, 18:30, "7 da noite", meio-dia, meia-noite and ranges such as "das 14 às 15:30". When only a start time is given, use a 60-minute duration. Respect an explicit duration such as "por 30 minutos" or "por 2 horas".
+- Create an all-day event only when the user explicitly says "dia inteiro", "o dia todo" or an equivalent phrase.
+- If the user gives a time but no date, use today. If an event has no time and is not explicitly all-day, a transaction has no amount, or two interpretations would materially change the saved data, return kind clarification with one short and specific question.
 - Never invent an amount, date, title, account or private detail.
 - A note may be pinned when the user asks to fix it on the dashboard, and important when the user says it is important or highlighted.
-- Keep confirmations short, clear and in Brazilian Portuguese.`;
+- Infer a useful event tag and color from context: Saúde #2ec4b6, Trabalho #7b61ff, Estudo #4d96ff, Finanças #ff9f1c, Planejamento #ffd600 or Pessoal #ffd600.
+- Keep confirmations short, clear and in Brazilian Portuguese.
+
+Examples:
+- "agenar reuniao amanhaa as 18h30" -> event titled "Reunião", tomorrow at 18:30, ending at 19:30, tag Trabalho.
+- "me lembra dentista prox tersa 9h" -> event titled "Dentista" on the next Tuesday at 09:00, tag Saúde.
+- "coloca academia hj 7 da noite por 2 horas" -> event today from 19:00 to 21:00, tag Saúde.
+- "marca viagem dia 30/10 o dia todo" -> all-day event on that date.
+- "agendar consulta amanhã" -> clarification asking only for the time.`;
 }
 
 Deno.serve(async (request) => {

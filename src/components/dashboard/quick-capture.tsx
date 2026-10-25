@@ -18,7 +18,8 @@ type ChatMessage = {
 const examples = [
   "Gastei R$ 200 no mercado hoje",
   "Criar nota: ideias para o próximo projeto",
-  "Agendar treino amanhã às 18h",
+  "Me lembra da consulta amanhã às 9h",
+  "Agendar reunião sexta das 14h às 15h",
 ];
 
 type SpeechRecognitionResultLike = {
@@ -120,7 +121,12 @@ export function QuickCapture() {
   function summarizeAction(action: AssistantAction) {
     if (action.kind === "transaction") return `${action.type === "expense" ? "Saída" : "Entrada"} · ${formatMoney(action.amountCents, action.currency)} · ${action.category} · ${new Date(`${action.date}T12:00:00`).toLocaleDateString("pt-BR")}`;
     if (action.kind === "note") return `Nota · ${action.title}${action.isPinned ? " · fixada" : ""}${action.isImportant ? " · importante" : ""}`;
-    if (action.kind === "event") return `Agenda · ${action.title} · ${new Date(action.startAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: action.allDay ? undefined : "short" })}`;
+    if (action.kind === "event") {
+      const start = new Date(action.startAt);
+      if (action.allDay) return `Agenda · ${action.title} · ${start.toLocaleDateString("pt-BR")} · dia inteiro`;
+      const end = new Date(action.endAt);
+      return `Agenda · ${action.title} · ${start.toLocaleDateString("pt-BR")} · ${start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}–${end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    }
     return action.question;
   }
 
