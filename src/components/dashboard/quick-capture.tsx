@@ -62,6 +62,7 @@ export function QuickCapture() {
   const [pending, setPending] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  const [review, setReview] = useState<{ action: AssistantAction; provider: string; summary: string } | null>(null);
   const [chat, setChat] = useState<ChatMessage[]>([
     { id: "welcome", role: "assistant", text: "Escreva como você falaria. Eu organizo a informação no lugar certo." },
   ]);
@@ -116,6 +117,21 @@ export function QuickCapture() {
     };
   }
 
+  function summarizeAction(action: AssistantAction) {
+    if (action.kind === "transaction") return `${action.type === "expense" ? "Saída" : "Entrada"} · ${formatMoney(action.amountCents, action.currency)} · ${action.category} · ${new Date(`${action.date}T12:00:00`).toLocaleDateString("pt-BR")}`;
+    if (action.kind === "note") return `Nota · ${action.title}${action.isPinned ? " · fixada" : ""}${action.isImportant ? " · importante" : ""}`;
+    if (action.kind === "event") return `Agenda · ${action.title} · ${new Date(action.startAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: action.allDay ? undefined : "short" })}`;
+    return action.question;
+  }
+
+  function confirmReview() {
+    if (!review) return;
+    const applied = applyAction(review.action);
+    setChat((current) => [...current, { id: createId("chat-assistant"), role: "assistant", text: applied.text, provider: review.provider, undo: applied.undo }]);
+    setReview(null);
+    window.setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
   async function runCommand(rawCommand: string) {
     const command = rawCommand.trim();
     if (command.length < 2 || pending) return;
@@ -130,8 +146,13 @@ export function QuickCapture() {
         currencies,
         accounts: accounts.filter((account) => account.active).map(({ id, name, currency }) => ({ id, name, currency })),
       });
-      const applied = applyAction(result.action);
-      setChat((current) => [...current, { id: createId("chat-assistant"), role: "assistant", text: applied.text, provider: result.provider === "gemini" ? "Gemini" : "Demonstração", undo: applied.undo }]);
+      const provider = result.provider === "gemini" ? "Gemini" : "Demonstração";
+      const action = result.action;
+      if (action.kind === "clarification") {
+        setChat((current) => [...current, { id: createId("chat-assistant"), role: "assistant", text: action.question, provider }]);
+      } else {
+        setReview({ action, provider, summary: summarizeAction(action) });
+      }
     } catch (error) {
       setChat((current) => [...current, { id: createId("chat-error"), role: "assistant", text: error instanceof Error ? error.message : "Não foi possível processar o comando." }]);
     } finally {
@@ -224,6 +245,8 @@ export function QuickCapture() {
         {pending && <div className="flex justify-start"><div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.07] px-4 py-4" aria-label="Interpretando comando"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ffd600]"/><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ffd600] [animation-delay:120ms]"/><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ffd600] [animation-delay:240ms]"/></div></div>}
       </div>
 
+      {review && <div className="mt-4 rounded-2xl border border-[#ffd600]/35 bg-[#ffd600]/10 p-4" role="region" aria-label="Revisar registro"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#ffd600]">Revisar antes de salvar</p><p className="mt-2 text-sm font-bold leading-relaxed text-white">{review.summary}</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => setReview(null)} className="flex-1 rounded-xl border border-white/15 px-3 py-2 text-xs font-bold text-white/65">Cancelar</button><button type="button" onClick={confirmReview} className="flex-1 rounded-xl bg-[#ffd600] px-3 py-2 text-xs font-black text-black">Confirmar</button></div></div>}
+
       <form onSubmit={submit} className={`mt-4 flex gap-2 rounded-2xl border bg-white/[0.06] p-2 transition focus-within:ring-2 ${listening ? "border-[#ffd600] ring-2 ring-[#ffd600]/20" : "border-white/15 focus-within:border-[#ffd600]/70 focus-within:ring-[#ffd600]/15"}`}>
         <label htmlFor="quick-capture-command" className="sr-only">Digite o que deseja adicionar</label>
         <input ref={inputRef} id="quick-capture-command" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={500} placeholder={listening ? "Estou ouvindo…" : "Ex.: gastei R$ 200 no mercado hoje"} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-white/30" />
@@ -231,7 +254,7 @@ export function QuickCapture() {
           {listening && <span className="absolute inset-0 animate-ping rounded-xl bg-red-500/35" />}
           <svg aria-hidden="true" viewBox="0 0 24 24" className="relative h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>
         </button>
-        <button type="submit" disabled={pending || message.trim().length < 2} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#ffd600] font-black text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label="Enviar comando">↑</button>
+        <button type="submit" disabled={pending || review !== null || message.trim().length < 2} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#ffd600] font-black text-black disabled:cursor-not-allowed disabled:opacity-35" aria-label="Enviar comando">↑</button>
       </form>
 
       {listening && <p className="mt-2 flex items-center gap-2 text-[11px] font-bold text-[#ffd600]"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500"/>Ouvindo… fale o comando. Toque novamente para enviar.</p>}

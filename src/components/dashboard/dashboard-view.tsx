@@ -13,8 +13,6 @@ import { useGamification } from "@/lib/gamification";
 import { formatMoney, defaultCurrencies, useLocalCollection, type Currency, type FinancialAccount, type Goal, type Habit, type Note, type Transaction, type UserCurrency } from "@/lib/local-data";
 import { useAppPreferences } from "@/lib/app-preferences";
 
-const bars = [0, 0, 0, 0, 0, 0, 0];
-
 type ExchangeResponse = { date: string; rates: ExchangeRates; source: string };
 type FrankfurterRate = { date: string; quote: string; rate: number };
 
@@ -60,6 +58,7 @@ export function DashboardView() {
   const consolidatedNetWorth = exchange ? convertNetWorth(balances, netWorthCurrency, exchange.rates) : null;
   const featuredGoals = getDashboardGoals(goals);
   const pinnedNote = getPinnedNote(notes);
+  const weekly = useMemo(() => weeklyConsistency(habits, new Date()), [habits]);
 
   useEffect(() => {
     const savedCurrency = window.localStorage.getItem(`foco:${userKey}:net-worth-currency`) as Currency | null;
@@ -85,9 +84,9 @@ export function DashboardView() {
   }
 
   return <div className="mx-auto max-w-[1440px]">
-    <header className="flex flex-col gap-5 border-b border-black/10 pb-7 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-xs font-black uppercase tracking-[0.2em] text-black/45">{date}</p><h1 className="mt-3 text-4xl font-black tracking-[-0.045em] sm:text-5xl">Olá, vamos focar?</h1><p className="mt-2 max-w-xl text-sm leading-relaxed text-black/55 sm:text-base">Aqui está o que importa hoje. Um passo de cada vez.</p></div>
-      <Link href="/habitos" className="inline-flex w-fit items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-black/80">+ Novo hábito</Link>
+    <header className="dashboard-hero flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
+      <div><p className="text-[10px] font-black uppercase tracking-[0.26em] text-[#ffd600]">{date}</p><h1 className="mt-3 text-4xl font-black sm:text-6xl">Olá, <span className="text-[#ffd600]">vamos focar?</span></h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-white/58 sm:text-base">Aqui está o que importa hoje. Um passo de cada vez.</p><div className="mt-6 h-0.5 w-24 bg-[#ffd600]" /></div>
+      <div className="flex flex-col items-start gap-5 lg:items-end"><p className="hero-quote hidden xl:block">Disciplina hoje resulta na liberdade de amanhã.</p><Link href="/habitos" className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#ffd600] px-5 py-3 text-sm font-black text-black shadow-[0_12px_35px_rgba(255,214,0,.2)] transition hover:-translate-y-0.5">+ Novo hábito</Link></div>
     </header>
 
     <PriorityGoals goals={goals} featuredGoals={featuredGoals} />
@@ -101,7 +100,7 @@ export function DashboardView() {
       <Metric label="Carteira de pontos" value={`${pointsBalance} pts`} note="Use em recompensas" />
     </section>
 
-    <section className="mt-4 overflow-hidden rounded-3xl bg-black text-white">
+    <section className="motivation-card mt-4 overflow-hidden rounded-3xl border border-[#ffd600]/20 bg-black text-white">
       <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
         <div><p className="text-xs font-black uppercase tracking-[0.16em] text-[#ffd600]">Patrimônio total convertido</p><p className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">{consolidatedNetWorth === null ? "—" : formatMoney(consolidatedNetWorth, netWorthCurrency)}</p><p className="mt-3 text-xs text-white/45">{exchange ? `Saldos de AUD, BRL e USD convertidos pela cotação de ${new Date(`${exchange.date}T12:00:00`).toLocaleDateString("pt-BR")}.` : exchangeError ? "Cotação indisponível. Seus saldos individuais continuam disponíveis abaixo." : "Atualizando a cotação mais recente…"}</p></div>
         <div><p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/35">Exibir patrimônio em</p><div className="flex rounded-xl bg-white/10 p-1">{currencies.map((currency) => <button key={currency} type="button" onClick={() => selectNetWorthCurrency(currency)} aria-pressed={netWorthCurrency === currency} className={`rounded-lg px-4 py-2 text-xs font-black transition ${netWorthCurrency === currency ? "bg-[#ffd600] text-black" : "text-white/55 hover:text-white"}`}>{currency}</button>)}</div></div>
@@ -112,11 +111,11 @@ export function DashboardView() {
     <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
       <section className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.04)]">
         <div className="flex items-start justify-between border-b border-black/10 p-5 sm:p-6"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-black/40">Rotina de hoje</p><h2 className="mt-1 text-xl font-black">Seus hábitos</h2></div><div className="grid h-12 w-12 place-items-center rounded-full bg-[#ffd600] text-sm font-black">{progress}%</div></div>
-        <div className="divide-y divide-black/[0.07]">{habits.slice(0, 5).map((habit) => { const done = isCompleted(habit); return <button key={habit.id} type="button" onClick={() => toggleHabit(habit.id)} aria-pressed={done} className="group flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-[#fffbea] sm:px-6"><span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition ${done ? "border-[#ffd600] bg-[#ffd600]" : "border-black/20 group-hover:border-black"}`}>{done && <span aria-hidden="true" className="text-sm font-black">✓</span>}</span><span className="min-w-0 flex-1"><span className={`block text-sm font-bold ${done ? "text-black/35 line-through" : "text-black"}`}>{habit.name}</span><span className="mt-0.5 block text-xs text-black/40">{habit.target} {habit.unit} · {habit.frequency}</span></span><span aria-hidden="true" className="text-black/20">→</span></button>; })}</div>
+        <div className="divide-y divide-black/[0.07]">{habits.slice(0, 5).map((habit) => { const done = isCompleted(habit); return <button key={habit.id} type="button" onClick={() => toggleHabit(habit.id)} aria-pressed={done} className="group flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-[#fffbea] sm:px-6"><span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition ${done ? "border-[#ffd600] bg-[#ffd600] text-black" : "border-black/20 group-hover:border-[#ffd600]"}`}>{done && <span aria-hidden="true" className="text-sm font-black">✓</span>}</span><span className="min-w-0 flex-1"><span className={`block text-sm font-bold ${done ? "text-black/35 line-through" : ""}`}>{habit.name}</span><span className="mt-0.5 block text-xs text-black/40">{habit.target} {habit.unit} · {habit.frequency}</span></span><span aria-hidden="true" className="text-black/20">→</span></button>; })}{habits.length === 0 && <div className="p-10 text-center"><p className="text-sm font-black">Sua rotina começa aqui.</p><p className="mt-1 text-xs text-[var(--muted)]">Crie um hábito para acompanhar o dia.</p></div>}</div>
         <div className="bg-[#faf9f4] px-5 py-4 sm:px-6"><Link href="/habitos" className="text-sm font-bold underline decoration-[#ffd600] decoration-4 underline-offset-4">Gerenciar hábitos</Link></div>
       </section>
 
-      <section className="page-grid rounded-3xl bg-[#ffd600] p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-black/45">Ritmo semanal</p><h2 className="mt-1 text-xl font-black">Consistência</h2></div><span className="rounded-full bg-black px-3 py-1.5 text-xs font-bold text-white">Esta semana</span></div><div className="mt-10 flex h-44 items-end justify-between gap-2" aria-label="Gráfico de consistência semanal">{bars.map((height, index) => <div key={index} className="flex h-full flex-1 flex-col justify-end gap-2"><div className="relative flex-1"><div className="absolute inset-x-0 bottom-0 rounded-t-lg bg-black" style={{ height: `${height}%` }} /></div><span className="text-center text-[10px] font-black">{["S", "T", "Q", "Q", "S", "S", "D"][index]}</span></div>)}</div><p className="mt-6 border-t border-black/15 pt-4 text-sm font-semibold"><span className="text-2xl font-black">+14%</span><br/><span className="text-black/55">mais consistente que na semana passada</span></p></section>
+      <section className="page-grid rounded-3xl bg-[#ffd600] p-5 text-black sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-black/45">Ritmo semanal</p><h2 className="mt-1 text-xl font-black">Consistência</h2></div><span className="rounded-full bg-black px-3 py-1.5 text-xs font-bold text-white">Esta semana</span></div><div className="mt-10 flex h-44 items-end justify-between gap-2" aria-label="Gráfico de consistência semanal">{weekly.bars.map((height, index) => <div key={index} className="flex h-full flex-1 flex-col justify-end gap-2"><div className="relative flex-1"><div className="absolute inset-x-0 bottom-0 min-h-1 rounded-t-lg bg-black" style={{ height: `${Math.max(2, height)}%`, opacity: height === 0 ? .18 : 1 }} /></div><span className="text-center text-[10px] font-black">{["S", "T", "Q", "Q", "S", "S", "D"][index]}</span></div>)}</div><p className="mt-6 border-t border-black/15 pt-4 text-sm font-semibold"><span className="text-2xl font-black">{weekly.current}%</span><br/><span className="text-black/55">{weekly.delta === null ? "concluído nesta semana" : `${weekly.delta >= 0 ? "+" : ""}${weekly.delta} p.p. em relação à semana passada`}</span></p></section>
     </div>
 
     <div className="mt-6">
@@ -128,7 +127,26 @@ export function DashboardView() {
   </div>;
 }
 
-function Metric({ label, value, note, accent = false }: { label: string; value: string; note: string; accent?: boolean }) { return <article className={`rounded-2xl border border-black/10 p-5 ${accent ? "bg-[#ffd600]" : "bg-white"}`}><p className="text-xs font-bold uppercase tracking-[0.12em] text-black/45">{label}</p><p className="mt-3 text-3xl font-black tracking-tight">{value}</p><p className="mt-2 text-xs font-medium text-black/45">{note}</p></article>; }
+function Metric({ label, value, note, accent = false }: { label: string; value: string; note: string; accent?: boolean }) { return <article className={`foco-stat p-5 ${accent ? "foco-stat-accent" : ""}`}><span className={`foco-icon ${accent ? "border-black/10 bg-black/10 text-black" : ""}`}>✦</span><p className="mt-4 text-xs font-bold uppercase tracking-[0.12em] text-black/45">{label}</p><p className="mt-2 text-3xl font-black tracking-tight">{value}</p><p className="mt-2 text-xs font-medium text-black/45">{note}</p></article>; }
+
+function weeklyConsistency(habits: Habit[], now: Date) {
+  const monday = new Date(now);
+  const weekday = (monday.getDay() + 6) % 7;
+  monday.setDate(monday.getDate() - weekday);
+  monday.setHours(12, 0, 0, 0);
+  const rateFor = (offset: number) => Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(date.getDate() + index + offset);
+    const key = date.toISOString().slice(0, 10);
+    if (!habits.length) return 0;
+    return Math.round(habits.filter((habit) => habit.completedDates?.includes(key)).length / habits.length * 100);
+  });
+  const bars = rateFor(0);
+  const previous = rateFor(-7);
+  const currentAverage = Math.round(bars.reduce((total, value) => total + value, 0) / 7);
+  const previousAverage = Math.round(previous.reduce((total, value) => total + value, 0) / 7);
+  return { bars, current: currentAverage, delta: habits.length ? currentAverage - previousAverage : null };
+}
 
 function PriorityGoals({ goals, featuredGoals }: { goals: Goal[]; featuredGoals: Goal[] }) {
   if (featuredGoals.length === 0) return null;

@@ -39,19 +39,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return <AppShell userName="Visitante">{children}</AppShell>;
 }
 `,
-  "src/app/(app)/conta/page.tsx": `import { PageHeader } from "@/components/app/ui";
+  "src/app/(app)/conta/page.tsx": `import { DemoAccountView } from "@/components/conta/demo-account-view";
 
 export const metadata = { title: "Minha conta" };
 
 export default function AccountPage() {
-  return <div className="mx-auto max-w-[1120px]">
-    <PageHeader eyebrow="Demonstração pública" title="Minha conta" description="O GitHub Pages executa a interface sem servidor e sem credenciais privadas." action={null} />
-    <section className="mt-7 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.04)] sm:p-8">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-black/40">Modo de demonstração</p>
-      <h2 className="mt-2 text-2xl font-black">Seus dados ficam neste navegador</h2>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/55">Você pode testar os módulos e o modo escuro. Login, troca de senha e sincronização com o Supabase ficam disponíveis somente na aplicação completa hospedada em um servidor Next.js.</p>
-    </section>
-  </div>;
+  return <DemoAccountView />;
 }
 `,
 };

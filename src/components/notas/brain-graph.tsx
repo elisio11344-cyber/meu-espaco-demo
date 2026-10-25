@@ -1,7 +1,8 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import type { Note } from "@/lib/local-data";
+import { useAppPreferences } from "@/lib/app-preferences";
 
 const VIEWBOX_WIDTH = 960;
 const VIEWBOX_HEIGHT = 560;
@@ -11,15 +12,23 @@ const MAX_ZOOM = 2.4;
 type Camera = { x: number; y: number; scale: number };
 
 export function BrainGraph({ notes, compact = false }: { notes: Note[]; compact?: boolean }) {
+  const { userKey } = useAppPreferences();
   const [selectedId, setSelectedId] = useState(notes[0]?.id ?? "");
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: 1 });
-  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const [savedPositions, setSavedPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const dragRef = useRef<{ pointerId: number; x: number; y: number; nodeId?: string } | null>(null);
   const patternId = useId().replaceAll(":", "");
-  const nodes = useMemo(() => createLayout(notes), [notes]);
+  const storageKey = `foco:${userKey}:brain-positions`;
+  const nodes = useMemo(() => createLayout(notes).map((node) => ({ ...node, ...(savedPositions[node.note.id] ?? {}) })), [notes, savedPositions]);
   const selected = notes.find((note) => note.id === selectedId) ?? notes[0];
   const positions = new Map(nodes.map((node) => [node.note.id, node]));
   const edges = nodes.flatMap(({ note }) => note.links.map((target) => ({ from: positions.get(note.id), to: positions.get(target), key: `${note.id}-${target}` }))).filter((edge) => edge.from && edge.to);
   const selectedConnections = new Set(selected ? [selected.id, ...selected.links, ...notes.filter((note) => note.links.includes(selected.id)).map((note) => note.id)] : []);
+
+  useEffect(() => {
+    try { setSavedPositions(JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, { x: number; y: number }>); }
+    catch { setSavedPositions({}); }
+  }, [storageKey]);
 
   function changeZoom(delta: number) {
     setCamera((current) => ({ ...current, scale: clamp(current.scale + delta, MIN_ZOOM, MAX_ZOOM) }));
@@ -47,11 +56,27 @@ export function BrainGraph({ notes, compact = false }: { notes: Note[]; compact?
     const deltaX = (event.clientX - drag.x) * unit;
     const deltaY = (event.clientY - drag.y) * unit;
     dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-    setCamera((current) => ({ ...current, x: current.x + deltaX, y: current.y + deltaY }));
+    if (drag.nodeId) {
+      setSavedPositions((current) => {
+        const node = positions.get(drag.nodeId!);
+        if (!node) return current;
+        const next = { ...current, [drag.nodeId!]: { x: node.x + deltaX / camera.scale, y: node.y + deltaY / camera.scale } };
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+        return next;
+      });
+    } else setCamera((current) => ({ ...current, x: current.x + deltaX, y: current.y + deltaY }));
   }
 
   function finishDrag(event: ReactPointerEvent<SVGSVGElement>) {
-    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+    if (dragRef.current?.pointerId === event.pointerId) {
+      dragRef.current = null;
+    }
+  }
+
+  function handleNodePointerDown(event: ReactPointerEvent<SVGGElement>, nodeId: string) {
+    event.stopPropagation();
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, nodeId };
+    event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
   }
 
   if (notes.length === 0) return <div className="brain-empty grid min-h-72 place-items-center rounded-2xl border border-dashed border-white/20 px-6 text-center text-sm text-white/45">Crie notas e conecte-as para formar seu Brain.</div>;
@@ -97,7 +122,7 @@ export function BrainGraph({ notes, compact = false }: { notes: Note[]; compact?
             const connected = selectedConnections.has(note.id);
             const important = note.isImportant ?? false;
             const radius = 18 + Math.min(degree * 3, 13) + (active ? 6 : 0);
-            return <g key={note.id} role="button" tabIndex={0} aria-label={`Abrir nota ${note.title}`} aria-pressed={active} onPointerDown={(event) => event.stopPropagation()} onClick={() => setSelectedId(note.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(note.id); } }} className={`brain-node cursor-pointer outline-none ${active ? "is-active" : connected ? "is-connected" : ""}`} style={{ transformOrigin: `${x}px ${y}px` }}>
+            return <g key={note.id} role="button" tabIndex={0} aria-label={`Abrir nota ${note.title}`} aria-pressed={active} onPointerDown={(event) => handleNodePointerDown(event, note.id)} onClick={() => setSelectedId(note.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(note.id); } }} className={`brain-node cursor-pointer outline-none ${active ? "is-active" : connected ? "is-connected" : ""}`} style={{ transformOrigin: `${x}px ${y}px` }}>
               <circle cx={x} cy={y} r={radius + 14} fill="transparent" />
               {active && <circle cx={x} cy={y} r={radius + 13} className="brain-node-pulse" />}
               {important ? <polygon points={starPoints(x, y, radius + 6, radius * 0.52)} className="brain-node-shape brain-node-star" filter={`url(#${patternId}-shadow)`} /> : <circle cx={x} cy={y} r={radius} className="brain-node-shape" filter={`url(#${patternId}-shadow)`} />}

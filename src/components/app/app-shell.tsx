@@ -125,16 +125,18 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
 export function AppShell({ children, authEnabled = false, userEmail, userName, userId, logoutAction }: { children: React.ReactNode; authEnabled?: boolean; userEmail?: string; userName?: string; userId?: string; logoutAction?: () => Promise<unknown> }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const [guideSignal, setGuideSignal] = useState(0);
   const userKey = userId || "local";
   const guide = guides[pathname];
 
   useEffect(() => {
     const saved = window.localStorage.getItem(`foco:${userKey}:theme`);
-    const nextDark = saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const nextDark = saved !== "light";
     setDark(nextDark);
     document.documentElement.classList.toggle("dark", nextDark);
+    setCollapsed(window.localStorage.getItem(`foco:${userKey}:sidebar`) === "collapsed");
   }, [userKey]);
 
   function toggleTheme() {
@@ -142,6 +144,14 @@ export function AppShell({ children, authEnabled = false, userEmail, userName, u
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
     window.localStorage.setItem(`foco:${userKey}:theme`, next ? "dark" : "light");
+  }
+
+  function toggleSidebar() {
+    setCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem(`foco:${userKey}:sidebar`, next ? "collapsed" : "expanded");
+      return next;
+    });
   }
 
   return <AppPreferencesProvider userKey={userKey}><div className="app-frame min-h-dvh bg-[var(--background)] text-[var(--foreground)] md:flex">
@@ -153,30 +163,30 @@ export function AppShell({ children, authEnabled = false, userEmail, userName, u
       </button></div>
     </header>
     {menuOpen && <button type="button" aria-label="Fechar menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/55 md:hidden" />}
-    <aside id="mobile-navigation" className={`command-rail fixed inset-y-0 left-0 z-50 flex w-[82vw] max-w-72 flex-col overflow-y-auto bg-[#0c0c0c] p-5 text-white transition-transform duration-300 md:sticky md:top-0 md:h-dvh md:w-64 md:translate-x-0 md:p-6 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-      <div className="hidden md:block"><Brand /></div>
-      <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.04] p-3 md:mt-12">
+    <aside id="mobile-navigation" className={`command-rail fixed inset-y-0 left-0 z-50 flex w-[82vw] max-w-72 flex-col overflow-y-auto bg-[#08090a] p-5 text-white transition-[transform,width,padding] duration-300 md:sticky md:top-0 md:h-dvh md:translate-x-0 ${collapsed ? "md:w-[88px] md:px-4 md:py-6" : "md:w-64 md:p-6"} ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <div className="hidden items-center justify-between gap-2 md:flex"><Brand compact={collapsed} /><button type="button" onClick={toggleSidebar} aria-label={collapsed ? "Expandir menu" : "Recolher menu"} className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 text-white/50 hover:border-[#ffd600]/50 hover:text-[#ffd600]">{collapsed ? "›" : "‹"}</button></div>
+      <div className={`motivation-card mt-8 rounded-2xl border border-white/10 p-3 md:mt-10 ${collapsed ? "md:hidden" : ""}`}>
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffd600]">Hoje</p>
         <p className="mt-1 text-sm font-medium">Organize. Faça. Evolua.</p>
       </div>
       <nav aria-label="Menu principal" className="mt-6 space-y-1">
         {navigation.map(({ href, label, icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
-          return <Link key={href} href={href} onClick={() => setMenuOpen(false)} aria-current={active ? "page" : undefined} className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${active ? "bg-[#ffd600] text-black" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+          return <Link key={href} href={href} title={collapsed ? label : undefined} onClick={() => setMenuOpen(false)} aria-current={active ? "page" : undefined} className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${collapsed ? "md:justify-center" : ""} ${active ? "bg-[#ffd600] text-black" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
             <Icon name={icon} />
-            <span>{label}</span>
-            {active && <span aria-hidden="true" className="ml-auto h-2 w-2 rounded-full bg-black" />}
+            <span className={collapsed ? "md:hidden" : ""}>{label}</span>
+            {active && <span aria-hidden="true" className={`ml-auto h-2 w-2 rounded-full bg-black ${collapsed ? "md:hidden" : ""}`} />}
           </Link>;
         })}
       </nav>
       <div className="mt-auto border-t border-white/10 pt-5">
-        <LanguageSwitcher />
-        <div className="mb-3 grid grid-cols-2 gap-2"><button type="button" onClick={toggleTheme} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:bg-white/10">{dark ? "☀ Claro" : "◐ Escuro"}</button>{guide && <button type="button" onClick={() => setGuideSignal((value) => value + 1)} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:bg-white/10">? Tutorial</button>}</div>
+        <div className={collapsed ? "md:hidden" : ""}><LanguageSwitcher /></div>
+        <div className={`mb-3 grid gap-2 ${collapsed ? "md:grid-cols-1" : "grid-cols-2"}`}><button type="button" onClick={toggleTheme} title={dark ? "Ativar modo claro" : "Ativar modo escuro"} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:bg-white/10">{collapsed ? (dark ? "☀" : "◐") : dark ? "☀ Claro" : "◐ Escuro"}</button>{guide && <button type="button" onClick={() => setGuideSignal((value) => value + 1)} title="Abrir tutorial" className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:bg-white/10">{collapsed ? "?" : "? Tutorial"}</button>}</div>
         <div className="flex items-center gap-3 rounded-xl p-2">
           <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ffd600] text-sm font-black text-black">{getInitials(userName)}</div>
-          <div className="min-w-0"><p className="truncate text-sm font-semibold">{userName || "Meu espaço"}</p><p className="truncate text-xs text-white/40">{authEnabled ? userEmail ?? "Conta conectada" : "Modo local"}</p></div>
+          <div className={`min-w-0 ${collapsed ? "md:hidden" : ""}`}><p className="truncate text-sm font-semibold">{userName || "Meu espaço"}</p><p className="truncate text-xs text-white/40">{authEnabled ? userEmail ?? "Conta conectada" : "Modo local"}</p></div>
         </div>
-        {authEnabled && logoutAction ? <button type="button" onClick={() => void logoutAction()} className="mt-2 w-full rounded-xl border border-white/10 px-3 py-2 text-left text-xs font-bold text-white/55 transition hover:bg-white/10 hover:text-white">Sair da conta</button> : <p className="mt-3 px-2 text-[11px] leading-relaxed text-white/30">Demonstração local. Os dados ficam somente neste navegador.</p>}
+        {authEnabled && logoutAction ? <button type="button" onClick={() => void logoutAction()} title="Sair da conta" className="mt-2 w-full rounded-xl border border-white/10 px-3 py-2 text-left text-xs font-bold text-white/55 transition hover:bg-white/10 hover:text-white">{collapsed ? "↪" : "Sair da conta"}</button> : <p className={`mt-3 px-2 text-[11px] leading-relaxed text-white/30 ${collapsed ? "md:hidden" : ""}`}>Demonstração local. Os dados ficam somente neste navegador.</p>}
       </div>
     </aside>
     <main id="content" className="app-content min-w-0 flex-1 px-5 py-7 sm:px-8 md:px-10 md:py-9 xl:px-14">{children}</main>
@@ -197,9 +207,9 @@ function getInitials(name?: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
-function Brand() {
+function Brand({ compact = false }: { compact?: boolean }) {
   return <Link href="/dashboard" className="brand-lockup flex items-center gap-3" aria-label="Foco — início">
     <span className="brand-mark grid h-9 w-9 place-items-center rounded-[10px] bg-[#ffd600] font-black text-black">F</span>
-    <span><span className="block text-sm font-black uppercase tracking-[0.16em]">Foco</span><span className="block text-[10px] uppercase tracking-[0.12em] text-white/40">Meu espaço</span></span>
+    <span className={compact ? "hidden" : ""}><span className="block text-sm font-black uppercase tracking-[0.16em]">Foco</span><span className="block text-[10px] uppercase tracking-[0.12em] text-white/40">Meu espaço</span></span>
   </Link>;
 }

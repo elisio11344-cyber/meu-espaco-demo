@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { logout } from "@/lib/auth/actions";
 import { updateEmail, updatePassword, updateProfile } from "@/lib/conta/actions";
 import type { AccountState } from "@/lib/conta/schema";
-import { Field, PageHeader, fieldClass, primaryButtonClass } from "@/components/app/ui";
+import { Field, Modal, PageHeader, fieldClass, primaryButtonClass } from "@/components/app/ui";
+import { useAppPreferences } from "@/lib/app-preferences";
 
 const timezones = [
   { value: "Australia/Sydney", label: "Sydney, Austrália" },
@@ -16,9 +17,35 @@ const timezones = [
 ];
 
 export function AccountView({ email, displayName, timezone, authEnabled }: { email: string; displayName: string; timezone: string; authEnabled: boolean }) {
+  const { userKey } = useAppPreferences();
   const [profileState, profileAction, profilePending] = useActionState<AccountState, FormData>(updateProfile, {});
   const [emailState, emailAction, emailPending] = useActionState<AccountState, FormData>(updateEmail, {});
   const [passwordState, passwordAction, passwordPending] = useActionState<AccountState, FormData>(updatePassword, {});
+  const [storageBytes, setStorageBytes] = useState(0);
+  const [clearOpen, setClearOpen] = useState(false);
+
+  useEffect(() => {
+    const prefix = `foco:${userKey}:`;
+    setStorageBytes(Object.keys(window.localStorage).filter((key) => key.startsWith(prefix)).reduce((total, key) => total + key.length + (window.localStorage.getItem(key)?.length ?? 0), 0) * 2);
+  }, [userKey]);
+
+  function exportData() {
+    const prefix = `foco:${userKey}:`;
+    const data = Object.fromEntries(Object.keys(window.localStorage).filter((key) => key.startsWith(prefix)).map((key) => [key, window.localStorage.getItem(key)]));
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), data }, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `foco-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function clearLocalData() {
+    const prefix = `foco:${userKey}:`;
+    Object.keys(window.localStorage).filter((key) => key.startsWith(prefix) && !key.endsWith(":theme") && !key.endsWith(":language")).forEach((key) => window.localStorage.removeItem(key));
+    setClearOpen(false);
+    window.location.assign("/dashboard");
+  }
 
   return <div className="mx-auto max-w-[1120px]">
     <PageHeader eyebrow="Preferências e segurança" title="Minha conta" description="Atualize seus dados pessoais, acesso e preferências do aplicativo." action={<span className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ${authEnabled ? "bg-emerald-100 text-emerald-800" : "bg-black/5 text-black/45"}`}>{authEnabled ? "● Conta conectada" : "Modo de demonstração"}</span>} />
@@ -64,7 +91,14 @@ export function AccountView({ email, displayName, timezone, authEnabled }: { ema
         </form>
       </section>
     </div>
+    <section className="foco-panel mt-6 p-5 sm:p-7"><SectionHeading eyebrow="Dados e privacidade" title="Seu espaço, sob seu controle" description="Exporte uma cópia dos registros locais ou recomece com o espaço vazio." /><div className="mt-6 grid gap-4 md:grid-cols-[1fr_auto]"><div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5"><p className="text-xs font-black uppercase tracking-[0.14em] text-[#ffd600]">Armazenamento local</p><p className="mt-2 text-3xl font-black">{formatBytes(storageBytes)}</p><p className="mt-1 text-xs text-[var(--muted)]">Estimativa dos dados do FOCO salvos neste navegador.</p></div><div className="flex flex-col gap-2 sm:flex-row md:flex-col"><button type="button" onClick={exportData} className="rounded-xl border border-[var(--border)] px-5 py-3 text-sm font-bold">↓ Exportar dados</button><button type="button" onClick={() => setClearOpen(true)} className="rounded-xl border border-red-500/25 px-5 py-3 text-sm font-bold text-red-400">Limpar todos os dados</button></div></div></section>
+    <Modal open={clearOpen} onClose={() => setClearOpen(false)} title="Limpar todos os dados?" description="Hábitos, notas, metas, finanças, agenda e recompensas deste navegador serão removidos. Esta ação não pode ser desfeita."><div className="flex justify-end gap-3"><button type="button" onClick={() => setClearOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold">Cancelar</button><button type="button" onClick={clearLocalData} className="rounded-xl bg-red-500 px-5 py-3 text-sm font-black text-white">Sim, limpar dados</button></div></Modal>
   </div>;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
 function SectionHeading({ eyebrow, title, description, dark = false }: { eyebrow: string; title: string; description: string; dark?: boolean }) {
