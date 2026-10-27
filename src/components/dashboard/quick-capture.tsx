@@ -16,10 +16,10 @@ type ChatMessage = {
 };
 
 const examples = [
-  "Gastei R$ 200 no mercado hoje",
-  "Criar nota: ideias para o próximo projeto",
-  "Me lembra da consulta amanhã às 9h",
-  "Agendar reunião sexta das 14h às 15h",
+  "Paguei duzentos reais no mercado hoje",
+  "Guarde uma ideia importante #projeto",
+  "Dentista amanhã às nove e meia",
+  "Reunião sexta das 14h às 15h",
 ];
 
 type SpeechRecognitionResultLike = {
@@ -65,7 +65,7 @@ export function QuickCapture() {
   const [voiceError, setVoiceError] = useState("");
   const [review, setReview] = useState<{ action: AssistantAction; provider: string; summary: string } | null>(null);
   const [chat, setChat] = useState<ChatMessage[]>([
-    { id: "welcome", role: "assistant", text: "Escreva como você falaria. Eu organizo a informação no lugar certo." },
+    { id: "welcome", role: "assistant", text: "Escreva ou fale do seu jeito. Entendo gastos, receitas, notas e compromissos, mesmo com abreviações e pequenos erros." },
   ]);
   const [accounts] = useLocalCollection<FinancialAccount>("foco-financial-accounts", []);
   const [currencyConfigs] = useLocalCollection<UserCurrency>("foco-currencies", defaultCurrencies);

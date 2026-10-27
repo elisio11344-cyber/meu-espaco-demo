@@ -10,8 +10,22 @@ export async function interpretQuickCapture(input: QuickCaptureRequest): Promise
   const { createClient } = await import("@/lib/supabase/client");
   const supabase = createClient();
   const { data, error } = await supabase.functions.invoke("quick-capture", { body: request });
-  if (error) throw new Error(await readableFunctionError(error));
-  return assistantResultSchema.parse(data);
+  if (error) {
+    const fallback = usefulLocalFallback(request);
+    if (fallback) return fallback;
+    throw new Error(await readableFunctionError(error));
+  }
+  const result = assistantResultSchema.safeParse(data);
+  if (result.success) return result.data;
+  const fallback = usefulLocalFallback(request);
+  if (fallback) return fallback;
+  throw new Error("A resposta inteligente veio incompleta. Reformule o comando e tente novamente.");
+}
+
+function usefulLocalFallback(request: QuickCaptureRequest) {
+  const fallback = interpretLocally(request);
+  if (fallback.action.kind !== "clarification" || !fallback.action.question.startsWith("Posso registrar")) return fallback;
+  return null;
 }
 
 async function readableFunctionError(error: unknown) {

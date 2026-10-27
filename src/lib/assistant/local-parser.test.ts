@@ -30,9 +30,54 @@ describe("interpretador da captura rápida", () => {
     expect(result.action).toMatchObject({ kind: "transaction", type: "expense", amountCents: 20_000, currency: "BRL", category: "Comida", accountId: "account-br" });
   });
 
+  it("interpreta valores formatados e categorias por contexto", () => {
+    const result = interpretLocally({ ...context, message: "Paguei R$ 1.250,50 de aluguel ontem" });
+    expect(result.action).toMatchObject({ kind: "transaction", type: "expense", amountCents: 125_050, currency: "BRL", category: "Aluguel", date: "2026-10-18" });
+  });
+
+  it("interpreta valores por extenso e gírias monetárias", () => {
+    const result = interpretLocally({ ...context, message: "gastei duzentos e cinquenta conto no supermercado" });
+    expect(result.action).toMatchObject({ kind: "transaction", type: "expense", amountCents: 25_000, currency: "BRL", category: "Comida" });
+  });
+
+  it("tolera erros de digitação em valores e moedas por extenso", () => {
+    const result = interpretLocally({ ...context, message: "gastei duzentu reias na padaria" });
+    expect(result.action).toMatchObject({ kind: "transaction", amountCents: 20_000, currency: "BRL", category: "Comida" });
+  });
+
+  it("reconhece formas informais de registrar receita", () => {
+    const result = interpretLocally({ ...context, message: "caiu 850 de freelance na conta" });
+    expect(result.action).toMatchObject({ kind: "transaction", type: "income", amountCents: 85_000, category: "Renda" });
+  });
+
+  it("entende uma movimentação escrita em inglês", () => {
+    const result = interpretLocally({ ...context, message: "I spent 45 AUD on Uber today" });
+    expect(result.action).toMatchObject({ kind: "transaction", type: "expense", amountCents: 4_500, currency: "AUD", category: "Transporte" });
+  });
+
+  it("não usa o dia de uma data como valor financeiro", () => {
+    const result = interpretLocally({ ...context, message: "paguei a conta dia 30/10" });
+    expect(result.action).toMatchObject({ kind: "clarification", question: "Qual é o valor da movimentação?" });
+  });
+
   it("interpreta uma nota importante", () => {
     const result = interpretLocally({ ...context, message: "Criar nota: revisar o planejamento do projeto importante" });
     expect(result.action).toMatchObject({ kind: "note", isImportant: true });
+  });
+
+  it("entende sinônimos de anotação, etiquetas e destaque", () => {
+    const result = interpretLocally({ ...context, message: "Guarde uma ideia sobre melhorar o onboarding #produto como prioridade" });
+    expect(result.action).toMatchObject({ kind: "note", tags: ["produto"], isImportant: true });
+  });
+
+  it("entende pedido para fixar uma nota no painel", () => {
+    const result = interpretLocally({ ...context, message: "Registre uma nota: revisar orçamento e deixe no topo" });
+    expect(result.action).toMatchObject({ kind: "note", isPinned: true });
+  });
+
+  it("entende uma nota escrita em espanhol", () => {
+    const result = interpretLocally({ ...context, message: "Guarda una nota: idea para el nuevo proyecto #trabajo" });
+    expect(result.action).toMatchObject({ kind: "note", tags: ["trabajo"] });
   });
 
   it("interpreta um compromisso para amanhã no horário local", () => {
@@ -76,6 +121,38 @@ describe("interpretador da captura rápida", () => {
     const { action, date } = eventParts("agendar viagem dia 25 o dia todo");
     expect(`${date.year}-${date.month}-${date.day}`).toBe("2026-10-25");
     expect(action.allDay).toBe(true);
+  });
+
+  it("entende data com mês escrito e horário por extenso", () => {
+    const { action, date } = eventParts("dentista 27 de outubro às nove e meia");
+    expect(`${date.year}-${date.month}-${date.day} ${date.hour}:${date.minute}`).toBe("2026-10-27 09:30");
+    expect(action).toMatchObject({ title: "dentista", tag: "Saúde" });
+  });
+
+  it("entende o dia do mês escrito por extenso", () => {
+    const { date } = eventParts("marcar consulta vinte e sete de outubro às 10h");
+    expect(`${date.year}-${date.month}-${date.day} ${date.hour}:${date.minute}`).toBe("2026-10-27 10:00");
+  });
+
+  it("entende compromissos naturais mesmo sem o verbo agendar", () => {
+    const { action, date } = eventParts("jantar com Ana amanhã 20h");
+    expect(`${date.year}-${date.month}-${date.day} ${date.hour}:${date.minute}`).toBe("2026-10-20 20:00");
+    expect(action.title).toBe("jantar com Ana");
+  });
+
+  it("entende datas relativas com números por extenso", () => {
+    const { date } = eventParts("marque terapia em três dias às oito da manhã");
+    expect(`${date.year}-${date.month}-${date.day} ${date.hour}:${date.minute}`).toBe("2026-10-22 08:00");
+  });
+
+  it("entende duração por extenso", () => {
+    const { action } = eventParts("programar estudo amanhã às 14h durante duas horas");
+    expect(new Date(action.endAt).getTime() - new Date(action.startAt).getTime()).toBe(120 * 60_000);
+  });
+
+  it("entende dias da semana em inglês", () => {
+    const { date } = eventParts("schedule a call next friday at 10h");
+    expect(`${date.year}-${date.month}-${date.day} ${date.hour}:${date.minute}`).toBe("2026-10-23 10:00");
   });
 
   it("pede o horário quando ele estiver ausente", () => {
