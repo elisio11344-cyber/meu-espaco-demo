@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { Field, Modal, PageHeader, fieldClass, primaryButtonClass } from "@/components/app/ui";
 import { createId, defaultCurrencies, useLocalCollection, type FinancialAccount, type Goal, type UserCurrency } from "@/lib/local-data";
 import { actualForPeriod, applyUniformDistribution, buildScenarios, calculatePlanningSummary, cumulativeSeries, generatePlanningPeriods, getCurrentPeriod, plannedForPeriod, replanFuturePeriods } from "@/lib/planejamentos/engine";
@@ -106,7 +107,7 @@ export function PlanningView() {
       </button>;
     })}</section> : <section className="foco-panel mt-5 p-10 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#ffd600] text-2xl font-black text-black">＋</span><h2 className="mt-5 text-xl font-black">Nenhum planejamento neste estado</h2><p className="mt-2 text-sm text-[var(--muted)]">Crie seu primeiro caminho mensurável e acompanhe a execução real.</p><button type="button" onClick={() => setWizardOpen(true)} className={`${primaryButtonClass} mt-5`}>Criar planejamento</button></section>}
 
-    {selected && <PlanningDetail planning={selected} periods={periods.filter((period) => period.planningId === selected.id)} sources={sources.filter((source) => source.planningId === selected.id)} entries={entries.filter((entry) => entry.planningId === selected.id)} revisions={revisions.filter((revision) => revision.planningId === selected.id)} onClose={() => setSelectedId(null)} onPlanningChange={(next) => setPlannings((items) => items.map((item) => item.id === next.id ? next : item))} onPeriodsChange={(next) => setPeriods((items) => [...items.filter((period) => period.planningId !== selected.id), ...next])} onEntriesChange={(next) => setEntries((items) => [...items.filter((entry) => entry.planningId !== selected.id), ...next])} onRevision={(revision) => setRevisions((items) => [revision, ...items])} />}
+    {selected && <PlanningDetailPortal planning={selected} periods={periods.filter((period) => period.planningId === selected.id)} sources={sources.filter((source) => source.planningId === selected.id)} entries={entries.filter((entry) => entry.planningId === selected.id)} revisions={revisions.filter((revision) => revision.planningId === selected.id)} onClose={() => setSelectedId(null)} onPlanningChange={(next) => setPlannings((items) => items.map((item) => item.id === next.id ? next : item))} onPeriodsChange={(next) => setPeriods((items) => [...items.filter((period) => period.planningId !== selected.id), ...next])} onEntriesChange={(next) => setEntries((items) => [...items.filter((entry) => entry.planningId !== selected.id), ...next])} onRevision={(revision) => setRevisions((items) => [revision, ...items])} />}
 
     <PlanningWizard key={wizardOpen ? "wizard-open" : "wizard-closed"} open={wizardOpen} onClose={() => setWizardOpen(false)} onCreate={createPlanning} goals={goals} accounts={accounts.filter((account) => account.active)} currencies={currencies} />
   </div>;
@@ -169,6 +170,20 @@ function toPlanningSources(drafts: SourceDraft[], planningId: string, frequency:
 
 function ReviewRow({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] pb-3 text-sm"><span className="text-[var(--muted)]">{label}</span><strong className="text-right">{value}</strong></div>; }
 
+function PlanningDetailPortal(props: Parameters<typeof PlanningDetail>[0]) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
+
+  if (!mounted) return null;
+  return createPortal(<PlanningDetail {...props} />, document.body);
+}
+
 function PlanningDetail({ planning, periods, sources, entries, revisions, onClose, onPlanningChange, onPeriodsChange, onEntriesChange, onRevision }: { planning: Planning; periods: PlanningPeriod[]; sources: PlanningSource[]; entries: PlanningEntry[]; revisions: PlanningRevision[]; onClose: () => void; onPlanningChange: (planning: Planning) => void; onPeriodsChange: (periods: PlanningPeriod[]) => void; onEntriesChange: (entries: PlanningEntry[]) => void; onRevision: (revision: PlanningRevision) => void }) {
   const today = todayKey();
   const current = getCurrentPeriod(periods, today);
@@ -203,8 +218,9 @@ function PlanningDetail({ planning, periods, sources, entries, revisions, onClos
     onPeriodsChange(replanFuturePeriods(planning, periods, entries, period.startDate, sources));
   }
 
-  return <div className="fixed inset-0 z-[65] overflow-y-auto bg-[var(--background)] md:left-64" role="dialog" aria-modal="true" aria-label={`Detalhes de ${planning.name}`}>
-    <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 lg:px-12"><div className="flex items-center justify-between gap-4"><button type="button" onClick={onClose} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-black">← Planejamentos</button><div className="flex gap-2"><button type="button" onClick={() => onPlanningChange({ ...planning, favorite: !planning.favorite, updatedAt: new Date().toISOString() })} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-black">{planning.favorite ? "★ Fixado" : "☆ Fixar"}</button><button type="button" onClick={() => onPlanningChange({ ...planning, status: "archived", updatedAt: new Date().toISOString() })} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-black">Arquivar</button></div></div>
+  return <div className="fixed inset-0 z-[80] overflow-y-auto bg-[var(--background)]" role="dialog" aria-modal="true" aria-label={`Detalhes de ${planning.name}`}>
+    <div className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/90 px-5 py-3 backdrop-blur-xl sm:px-8"><div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4"><button type="button" onClick={onClose} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-black">← Planejamentos</button><div className="flex gap-2"><button type="button" onClick={() => onPlanningChange({ ...planning, favorite: !planning.favorite, updatedAt: new Date().toISOString() })} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-black">{planning.favorite ? "★ Fixado" : "☆ Fixar"}</button><button type="button" onClick={() => onPlanningChange({ ...planning, status: "archived", updatedAt: new Date().toISOString() })} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-black">Arquivar</button></div></div></div>
+    <div className="mx-auto max-w-[1600px] px-5 py-6 sm:px-8 lg:px-12">
       <header className="editorial-header mt-5"><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#ffd600]">{planning.category} · painel de execução</p><h1 className="mt-3 text-4xl font-black sm:text-6xl">{planning.name}</h1><p className="mt-3 max-w-2xl text-white/60">{planning.description || "Acompanhe o plano, os registros reais e a projeção de conclusão."}</p><div className="mt-6 flex flex-wrap gap-3"><span className={`rounded-full px-3 py-1.5 text-xs font-black ${statusClass(summary.status)}`}>{statusLabel(summary.status)}</span><span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-black">{summary.daysRemaining} dias restantes</span></div></header>
 
       <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><PlanningStat label="Progresso real" value={`${summary.progressPercent}%`} icon="↗" accent /><PlanningStat label="Realizado" value={formatPlanningAmount(summary.actualProgress, planning)} icon="●" /><PlanningStat label="Restante" value={formatPlanningAmount(summary.remaining, planning)} icon="◷" /><PlanningStat label="Média necessária" value={formatPlanningAmount(summary.requiredAverage, planning)} icon="÷" /></section>
@@ -214,17 +230,52 @@ function PlanningDetail({ planning, periods, sources, entries, revisions, onClos
         <aside className="space-y-5"><section className="foco-panel p-5"><p className="text-xs font-black uppercase tracking-[.16em] text-[#ffd600]">Cenários</p><div className="mt-4 space-y-3">{scenarios.map((scenario) => <div key={scenario.name} className="rounded-xl bg-[var(--surface-soft)] p-3"><div className="flex justify-between gap-3 text-sm"><span className="font-bold">{scenario.name === "conservative" ? "Conservador" : scenario.name === "expected" ? "Esperado" : "Otimista"}</span><strong>{formatPlanningAmount(scenario.projectedAmount, planning)}</strong></div><p className="mt-1 text-[10px] text-[var(--muted)]">Base: {scenario.methodology === "observed" ? "desempenho observado" : "contribuições planejadas"}</p></div>)}</div></section><section className="foco-panel p-5"><p className="text-xs font-black uppercase tracking-[.16em] text-[#ffd600]">Revisões</p><p className="mt-3 text-3xl font-black">{revisions.length}</p><p className="mt-1 text-xs text-[var(--muted)]">versões prospectivas preservadas</p></section></aside>
       </div>
 
-      <section className="foco-panel mt-5 p-5 sm:p-6"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#ffd600]">Histórico e projeção</p><h2 className="mt-1 text-2xl font-black">Planejado versus realizado</h2></div><PlanningChart series={series} target={planning.targetAmount} /></section>
+      <section className="foco-panel mt-5 p-5 sm:p-6"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#ffd600]">Histórico e projeção</p><h2 className="mt-1 text-2xl font-black">Planejado versus realizado</h2></div><PlanningChart series={series} target={planning.targetAmount} planning={planning} /></section>
     </div>
     <Modal open={Boolean(entrySource)} onClose={() => { setEntrySource(null); setEditingEntry(null); }} title={editingEntry ? "Editar resultado" : "Registrar resultado"} description="O registro atualiza o planejamento, sem criar uma movimentação financeira."><form key={editingEntry?.id ?? entrySource ?? "entry"} onSubmit={saveEntry} className="grid gap-4"><Field label="Valor ou quantidade"><input name="amount" className={fieldClass} required inputMode="decimal" defaultValue={editingEntry ? editingEntry.amount / 100 : undefined} /></Field><Field label="Data"><input name="date" className={fieldClass} required type="date" defaultValue={editingEntry?.occurredOn ?? today} /></Field><Field label="Observação"><textarea name="notes" className={fieldClass} rows={2} defaultValue={editingEntry?.notes} /></Field><button className={primaryButtonClass}>Salvar resultado</button></form></Modal>
   </div>;
 }
 
-function PlanningChart({ series, target }: { series: ReturnType<typeof cumulativeSeries>; target: number }) {
+function PlanningChart({ series, target, planning }: { series: ReturnType<typeof cumulativeSeries>; target: number; planning: Planning }) {
+  const gradientId = useId().replaceAll(":", "");
   if (series.length === 0) return <p className="mt-6 text-sm text-[var(--muted)]">Sem períodos para exibir.</p>;
-  const width = 900;
-  const height = 250;
+  const width = 1200;
+  const height = 360;
+  const plot = { left: 88, right: 32, top: 28, bottom: 58 };
+  const plotWidth = width - plot.left - plot.right;
+  const plotHeight = height - plot.top - plot.bottom;
   const max = Math.max(target, ...series.flatMap((item) => [item.planned, item.actual]), 1);
-  const points = (key: "planned" | "actual") => series.map((item, index) => `${series.length === 1 ? width / 2 : index / (series.length - 1) * width},${height - item[key] / max * (height - 24)}`).join(" ");
-  return <div className="mt-6 overflow-x-auto"><svg viewBox={`0 0 ${width} ${height}`} className="min-w-[620px]" role="img" aria-label="Gráfico de progresso planejado e realizado"><defs><linearGradient id="planning-fill" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#ffd600" stopOpacity=".24"/><stop offset="1" stopColor="#ffd600" stopOpacity="0"/></linearGradient></defs>{[0, .25, .5, .75, 1].map((value) => <line key={value} x1="0" x2={width} y1={height - value * (height - 24)} y2={height - value * (height - 24)} stroke="currentColor" opacity=".08" />)}<polyline points={points("planned")} fill="none" stroke="#ffd600" strokeWidth="4" strokeDasharray="9 7"/><polyline points={points("actual")} fill="none" stroke="#2ec4b6" strokeWidth="5"/><g transform={`translate(0 ${height - 4})`}><text fill="currentColor" opacity=".5" fontSize="11">{series[0]?.label}</text><text x={width} textAnchor="end" fill="currentColor" opacity=".5" fontSize="11">{series.at(-1)?.label}</text></g></svg><div className="mt-3 flex gap-5 text-xs font-bold"><span className="text-[#ffd600]">┄ Planejado</span><span className="text-[#2ec4b6]">━ Realizado</span></div></div>;
+  const point = (item: (typeof series)[number], index: number, key: "planned" | "actual") => ({
+    x: plot.left + (series.length === 1 ? plotWidth / 2 : index / (series.length - 1) * plotWidth),
+    y: plot.top + plotHeight - item[key] / max * plotHeight,
+  });
+  const points = (key: "planned" | "actual") => series.map((item, index) => { const value = point(item, index, key); return `${value.x},${value.y}`; }).join(" ");
+  const actualArea = `${plot.left},${plot.top + plotHeight} ${points("actual")} ${plot.left + plotWidth},${plot.top + plotHeight}`;
+  const last = series.at(-1)!;
+  const lastActual = point(last, series.length - 1, "actual");
+  const visibleLabelIndexes = new Set([0, Math.floor((series.length - 1) / 2), series.length - 1]);
+  const ticks = [0, .25, .5, .75, 1];
+
+  return <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:p-5">
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-4 text-xs font-bold"><span className="flex items-center gap-2"><i className="h-0.5 w-7 bg-[#2ec4b6]" />Realizado</span><span className="flex items-center gap-2"><i className="h-0.5 w-7 border-t-2 border-dashed border-[#ffd600]" />Planejado</span><span className="flex items-center gap-2"><i className="h-0.5 w-7 bg-white/35" />Objetivo</span></div><div className="rounded-xl bg-[#2ec4b6]/10 px-3 py-2 text-right"><p className="text-[9px] font-black uppercase tracking-wider text-[#2ec4b6]">Último realizado</p><p className="mt-0.5 text-sm font-black">{formatPlanningAmount(last.actual, planning)}</p></div></div>
+    <div className="overflow-x-auto"><svg viewBox={`0 0 ${width} ${height}`} className="min-w-[700px]" role="img" aria-label={`Evolução acumulada: ${formatPlanningAmount(last.actual, planning)} realizado de ${formatPlanningAmount(target, planning)}`}><defs><linearGradient id={`${gradientId}-actual`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#2ec4b6" stopOpacity=".28"/><stop offset="1" stopColor="#2ec4b6" stopOpacity="0"/></linearGradient><filter id={`${gradientId}-glow`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      {ticks.map((tick) => { const y = plot.top + plotHeight - tick * plotHeight; return <g key={tick}><line x1={plot.left} x2={plot.left + plotWidth} y1={y} y2={y} stroke="currentColor" opacity={tick === 0 ? .16 : .08}/><text x={plot.left - 14} y={y + 4} textAnchor="end" fill="currentColor" opacity=".42" fontSize="11">{formatCompact(max * tick, planning)}</text></g>; })}
+      <line x1={plot.left} x2={plot.left + plotWidth} y1={plot.top + plotHeight - target / max * plotHeight} y2={plot.top + plotHeight - target / max * plotHeight} stroke="currentColor" opacity=".32" strokeWidth="2"/>
+      <polygon points={actualArea} fill={`url(#${gradientId}-actual)`}/>
+      <polyline points={points("planned")} fill="none" stroke="#ffd600" strokeWidth="3" strokeDasharray="10 8" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points={points("actual")} fill="none" stroke="#2ec4b6" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" filter={`url(#${gradientId}-glow)`}/>
+      {series.map((item, index) => { const actual = point(item, index, "actual"); return <g key={`${item.label}-${index}`}><circle cx={actual.x} cy={actual.y} r="6" fill="#090a0b" stroke="#2ec4b6" strokeWidth="3"/><title>{`${item.label}: ${formatPlanningAmount(item.actual, planning)} realizado; ${formatPlanningAmount(item.planned, planning)} planejado`}</title>{visibleLabelIndexes.has(index) && <text x={actual.x} y={height - 18} textAnchor={index === 0 ? "start" : index === series.length - 1 ? "end" : "middle"} fill="currentColor" opacity=".52" fontSize="11">{shortenLabel(item.label)}</text>}</g>; })}
+      <g transform={`translate(${Math.min(lastActual.x - 66, width - 160)} ${Math.max(8, lastActual.y - 48)})`}><rect width="132" height="34" rx="10" fill="#2ec4b6"/><text x="66" y="22" textAnchor="middle" fill="#07100e" fontSize="12" fontWeight="800">{formatCompact(last.actual, planning)}</text></g>
+    </svg></div>
+  </div>;
+}
+
+function formatCompact(amount: number, planning: Planning) {
+  const value = amount / 100;
+  const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return planning.kind === "financial" ? `${planning.currency ?? ""} ${compact}` : `${compact} ${planning.unit}`;
+}
+
+function shortenLabel(label: string) {
+  return label.length > 22 ? `${label.slice(0, 20)}…` : label;
 }
