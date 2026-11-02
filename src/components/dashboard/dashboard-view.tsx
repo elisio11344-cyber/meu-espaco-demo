@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AgendaFloating } from "@/components/agenda/agenda-floating";
 import { QuickCapture } from "@/components/dashboard/quick-capture";
+import { PlanningWidget } from "@/components/planejamentos/planning-widget";
 import { BrainGraph } from "@/components/notas/brain-graph";
 import { convertNetWorth, type CurrencyBalances, type ExchangeRates } from "@/lib/financas/exchange";
 import { calculateAccumulatedTotal } from "@/lib/financas/summary";
@@ -92,6 +93,8 @@ export function DashboardView() {
     <PriorityGoals goals={goals} featuredGoals={featuredGoals} />
 
     <QuickCapture />
+
+    <PlanningWidget />
 
     <section aria-label="Resumo do dia" className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric label="Hábitos concluídos" value={`${completed}/${habits.length}`} note={`${progress}% da meta diária`} accent />

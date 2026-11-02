@@ -7,7 +7,7 @@ import { AppPreferencesProvider } from "@/lib/app-preferences";
 import { useI18n, type Language } from "@/lib/i18n";
 import { FirstVisitGuide, type GuideContent } from "./first-visit-guide";
 
-type IconName = "dashboard" | "calendar" | "habits" | "notes" | "goals" | "finance" | "rewards" | "account";
+type IconName = "dashboard" | "calendar" | "habits" | "notes" | "goals" | "planning" | "finance" | "rewards" | "account";
 
 const navigation: Array<{ href: string; label: string; icon: IconName }> = [
   { href: "/dashboard", label: "Visão geral", icon: "dashboard" },
@@ -15,6 +15,7 @@ const navigation: Array<{ href: string; label: string; icon: IconName }> = [
   { href: "/habitos", label: "Hábitos", icon: "habits" },
   { href: "/notas", label: "Notas", icon: "notes" },
   { href: "/metas", label: "Metas", icon: "goals" },
+  { href: "/planejamentos", label: "Planejamentos", icon: "planning" },
   { href: "/financas", label: "Finanças", icon: "finance" },
   { href: "/recompensas", label: "Recompensas", icon: "rewards" },
   { href: "/conta", label: "Minha conta", icon: "account" },
@@ -85,6 +86,17 @@ const guides: Record<string, GuideContent> = {
       { button: "Editar", title: "Corrija lançamentos e contas", description: "Abra um item existente para alterar seus dados, excluir ou arquivar." },
     ],
   },
+  "/planejamentos": {
+    title: "Planeje o caminho completo",
+    description: "Veja como transformar uma meta em períodos e registros reais.",
+    steps: [
+      { button: "+ Criar planejamento", title: "Comece pelo objetivo", description: "Defina valor, prazo, frequência, fontes e distribuição em cinco etapas." },
+      { button: "Editor por período", title: "Ajuste cada etapa", description: "Compare planejado e realizado por fonte, preservando o histórico anterior." },
+      { button: "+ Registrar resultado", title: "Registre a execução", description: "Adicione o que aconteceu de verdade com data e observação." },
+      { button: "Distribuir diferença", title: "Replaneje somente o futuro", description: "Redistribui o saldo restante e guarda uma revisão do plano anterior." },
+      { button: "Planejado versus realizado", title: "Acompanhe tendências", description: "Compare as curvas e consulte cenários conservador, esperado e otimista." },
+    ],
+  },
   "/recompensas": {
     title: "Use seus pontos",
     description: "Veja como criar e resgatar recompensas pessoais.",
@@ -115,6 +127,7 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
     habits: <><path d="M8 12.5l2.6 2.6L16.5 9"/><path d="M12 3a9 9 0 1 0 9 9"/><path d="M16 3h5v5"/></>,
     notes: <><path d="M5 3h11l3 3v15H5z"/><path d="M15 3v4h4M8 11h8M8 15h8"/></>,
     goals: <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></>,
+    planning: <><path d="M4 19V5M4 15h5l2-2 3 3 6-7"/><path d="M16 9h4v4"/></>,
     finance: <><path d="M4 7h16v12H4zM4 10h16"/><path d="M8 15h3"/></>,
     rewards: <><path d="M4 10h16v11H4zM12 10v11M3 6h18v4H3z"/><path d="M12 6c-2-4-7-3-5 0h5Zm0 0c2-4 7-3 5 0h-5Z"/></>,
     account: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
